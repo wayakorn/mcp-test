@@ -129,7 +129,7 @@ app.get("/notify", function(req, res) {
             newRes.setEncoding("utf8");
             newRes.on("data", function(message) {
                 var body = "Contacting notification server [" + g_notificationServer + ":" + g_notificationServerPort + "] to send the notifications..." +
-                           "\n-> Got back: " + message;
+                           "  \n-> Got back: " + message;
                 res.end(body);
             });
         }).end();
@@ -151,7 +151,7 @@ app.get("/stats", function(req, res) {
                 if (m_peekNumPrinters > 0 && m_notifyTimestampMS && m_allPrintersRemovedTimestampMS) {
                     body += "It took " + (m_allPrintersRemovedTimestampMS - m_notifyTimestampMS) + " msec to complete " + m_peekNumPrinters + " notifications.";
                 } else {
-                    body += "\nN/A - you must first use test service (this website) to simulate printer wait then send a job notification.";
+                    body += "  \nN/A - you must first use test service (this website) to simulate printer wait then send a job notification.";
                 }
                 res.end(body);
             });

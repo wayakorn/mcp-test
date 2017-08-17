@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>jQuery Hello World</title>
+<title>MCP Notification Service Test</title>
 
 <script type="text/javascript" src="jquery.min.js"></script>
 
@@ -39,11 +39,11 @@ function RunOneIteration() {
     if (m_currentIteration < m_maxIterations) {
         ++m_currentIteration;
 
-        Output.innerText += "Iteration " + m_currentIteration + " out of " + m_maxIterations + "...\r\n";
+        Output.innerText += "Iteration " + m_currentIteration + " out of " + m_maxIterations + "...  \n";
         m_ajaxRequest = $.get(getPrinterWaitTestUrl(), function(response) {
-            Output.innerText += response + "\r\n";
+            Output.innerText += response + "  \n";
             m_ajaxRequest = $.get("/notify", function(response) {
-                Output.innerText += response + "\r\n";
+                Output.innerText += response + "  \n";
                 m_ajaxRequest = $.get("/stats", function(response) {
                     Output.innerText += response;
                     Output.innerText += "\r\n------------------------------\r\n\r\n";
@@ -65,7 +65,7 @@ function Run() {
     Output.innerText = "";
     // Set the notification URL we're going to be using
     m_ajaxRequest = $.get(getNotificationServerConfigUrl(), function(response) {
-        Output.innerText = "Set the notification server to " + response + "\r\n";
+        Output.innerText = "Set the notification server to " + response + "  \n";
     });
     
     m_currentIteration = 0;
@@ -93,7 +93,7 @@ function CancelRun() {
 
 </script>
 
-<h2>Notification Service Test</h2>
+<h2>MCP Notification Service Test</h2>
 
 <br><label for="Server">1. Confirm the notification service address: </label><input type="text" id="Server" style="width:200" value="mscps-notif.azurewebsites.net">
 <label for="Port"> : </label><input type="text" id="Port" style="width:40" value="80">
