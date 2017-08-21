@@ -43,7 +43,7 @@ router.get("/wait/:numRequests", function(req, res) {
                         res.end(numRequests + " printers are now waiting for HTTP replies.");    
                     }
                 }).on("close", function(hasError) {
-                    var printer = g_findPrinter(this.key, true);
+                    var printer = g_findOrDeletePrinter(this.key, true);
                     if (g_verbose && printer) {
                         console.log("[test_httpget.js] printer {" + printer.Key + "} closed (socket closed), HasError=" + hasError + ", numPrinters=" + g_getPrinterCount());
                     }

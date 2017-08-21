@@ -35,18 +35,60 @@ var m_currentIteration = 0;
 var m_maxIterations = 0;
 var m_ajaxRequest;
 
+// Summary stats
+var m_currentMin = 0;
+var m_currentMax = 0;
+var m_currentSum = 0;
+
+function Reset() {
+    m_timer = null;
+    m_currentIteration = 0;
+    m_maxIterations = 0;
+    m_ajaxRequest = null;
+    m_currentMin = 0;
+    m_currentMax = 0;
+    m_currentSum = 0;
+
+    Output.innerText = "";
+    var vis = SummaryOnlyCheckbox.checked ? "visible" : "hidden";
+    $("#SummaryDiv").css("visibility", vis);
+}
+
 function RunOneIteration() {
     if (m_currentIteration < m_maxIterations) {
         ++m_currentIteration;
 
-        Output.innerText += "Iteration " + m_currentIteration + " out of " + m_maxIterations + "...  \n";
+        if (!SummaryOnlyCheckbox.checked) {
+            Output.innerText += "Iteration " + m_currentIteration + " out of " + m_maxIterations + "...  \n";
+        }
         m_ajaxRequest = $.get(getPrinterWaitTestUrl(), function(response) {
-            Output.innerText += response + "  \n";
-            m_ajaxRequest = $.get("/notify", function(response) {
+            if (!SummaryOnlyCheckbox.checked) {
                 Output.innerText += response + "  \n";
-                m_ajaxRequest = $.get("/stats", function(response) {
-                    Output.innerText += response;
-                    Output.innerText += "\r\n------------------------------\r\n\r\n";
+            }
+            m_ajaxRequest = $.get("/notify", function(response) {
+                if (!SummaryOnlyCheckbox.checked) {
+                    Output.innerText += response + "  \n";
+                }
+                var statsPage = SummaryOnlyCheckbox.checked ? "/stats_elapsed" : "/stats";
+                m_ajaxRequest = $.get(statsPage, function(response) {
+                    if (SummaryOnlyCheckbox.checked) {
+                        IterationDiv.innerText = m_currentIteration + " / " + m_maxIterations;
+                        var elapsed = Number(response);
+                        if (elapsed < m_currentMin || m_currentMin == 0) {
+                            m_currentMin = elapsed;
+                            MinDiv.innerText = m_currentMin;
+                        }
+                        if (elapsed > m_currentMax || m_currentMax == 0) {
+                            m_currentMax = elapsed;
+                            MaxDiv.innerText = m_currentMax;
+                        }
+                        m_currentSum += elapsed;
+                        var avg = m_currentSum / m_currentIteration;
+                        AvgDiv.innerText = avg.toFixed(2);
+                    } else {
+                        Output.innerText += response;
+                        Output.innerText += "\r\n------------------------------\r\n\r\n";
+                    }
                     m_timer = setTimeout(RunOneIteration, 100);
                     $("#Output").stop().animate({
                         scrollTop: $('#Output')[0].scrollHeight
@@ -58,21 +100,26 @@ function RunOneIteration() {
         m_timer = null;
         CancelButton.disabled = true;
         StartButton.disabled = false;
+        SummaryOnlyCheckbox.disabled = false;
+        Output.innerText += "Test complete!";
     }
 }
 
 function Run() {
-    Output.innerText = "";
+    // Reset the UI from previous runs
+    Reset();
+
     // Set the notification URL we're going to be using
     m_ajaxRequest = $.get(getNotificationServerConfigUrl(), function(response) {
-        Output.innerText = "Set the notification server to " + response + "  \n";
+        Output.innerText = "Testing against the notification server at " + response + "...\n";
     });
-    
+
     m_currentIteration = 0;
     m_maxIterations = Number(NumIteration.value);
     if (m_maxIterations > 0) {
         CancelButton.disabled = false;
         StartButton.disabled = true;
+        SummaryOnlyCheckbox.disabled = true;
         m_timer = setTimeout(RunOneIteration, 100);
     }
 }
@@ -87,8 +134,9 @@ function CancelRun() {
         m_timer = null;
         CancelButton.disabled = true;
         StartButton.disabled = false;
+        SummaryOnlyCheckbox.disabled = false;
     }
-    Output.innerText += "(canceled)";
+    Output.innerText += " (canceled)";
 }
 
 </script>
@@ -106,10 +154,30 @@ function CancelRun() {
 
 <br><br><label for="NumIteration">4. Enter the number of iterations: </label><input type="text" id="NumIteration" value="20" style="width:50">
 
-<br><br>5. Run the test: <input type="button" id="StartButton" value="Start!" style="height:30;width:100" onclick="Run()">
+<br><br>5. Execute the test:</br>
+&nbsp;&nbsp;<input type="checkbox" id="SummaryOnlyCheckbox" checked=true value="Log">Show statistics
+&nbsp;&nbsp;<input type="button" id="StartButton" value="Start!" style="height:30;width:100" onclick="Run()">
 <input type="button" id="CancelButton" value="Cancel" disabled=true style="height:30;width:100" onclick="CancelRun()">
 
-<hr><b>Output:</b><br><br>
+<hr>
+
+<div id="SummaryDiv" style="visibility:hidden; margin-left:20px;">
+    <table id=SummaryTable style="font-size:10pt">
+    <tr>
+        <th align="center" style="width:120px">iteration</th>
+        <th align="center" style="width:120px">min (msec)</th>
+        <th align="center" style="width:120px">max (msec)</th>
+        <th align="center" style="width:120px">avg (msec)</th>
+    </tr>
+    <tr>
+        <td align="center"><div id=IterationDiv></div></th>
+        <td align="center"><div id=MinDiv></div></th>
+        <td align="center"><div id=MaxDiv></div></th>
+        <td align="center"><div id=AvgDiv></div></th>
+    </tr>
+    </table>
+</div>
+
 <div id="Output" style="font-family:Consolas; font-size:10; width:100%; height:60%; border: 1px dotted grey; padding-left:10px; overflow-y:scroll;"></div>
 
 </body>

@@ -43,7 +43,7 @@ g_reset = function() {
     }
 }
 
-g_findPrinter = function(key, remove) {
+g_findOrDeletePrinter = function(key, remove) {
     var result = null;
     var printers = [];
     for (var i = 0; i < m_printers.length; ++i) {
@@ -52,7 +52,7 @@ g_findPrinter = function(key, remove) {
             if (!remove) {
                 break;
             }
-        } else {
+        } else if (remove) {
             printers.push(m_printers[i]);
         }
     }
@@ -66,7 +66,7 @@ g_findPrinter = function(key, remove) {
 };
 
 g_addPrinter = function(printer) {
-    var oldPrinter = g_findPrinter(printer.Key, true);
+    var oldPrinter = g_findOrDeletePrinter(printer.Key, true);
     if (oldPrinter != null) {
         console.log("[test.js] WARNING: duplicate printer added, the previous entry has been removed.")
     }
@@ -112,6 +112,7 @@ app.get("/help", function(req, res) {
     body += "<br>";
     body += "<br>Step 3: Look at the statistics:";
     body += "<br>&nbsp;&nbsp;<a href='/stats'>stats</a>";
+    body += "<br>&nbsp;&nbsp;<a href='/stats_elapsed'>stats_elapsed (show elapsed time only)</a>";
     body += "<br>&nbsp;&nbsp;<a href='/resetstats'>reset stats</a>";
     body += "</html>";
     res.end(body);
@@ -134,12 +135,13 @@ app.get("/notify", function(req, res) {
             });
         }).end();
     m_notifyTimestampMS = Date.now();
+
+    // Prevent negative elapsed time return in case someone else signaled the notification before we do
+    m_allPrintersRemovedTimestampMS = m_notifyTimestampMS;
 });
 
 // ---------- Statistics ----------
-app.get("/stats", function(req, res) {
-    res.setHeader("content-type", "text/plain; charset=utf-8");
-    res.setHeader("cache-control", "no-cache");
+function m_doStats(completion) {
     http.request({
             host: g_notificationServer,
             port: g_notificationServerPort,
@@ -147,15 +149,35 @@ app.get("/stats", function(req, res) {
         }, function(newRes) {
             newRes.setEncoding("utf8");
             newRes.on("data", function(message) {
-                var body = "Result: ";
                 if (m_peekNumPrinters > 0 && m_notifyTimestampMS && m_allPrintersRemovedTimestampMS) {
-                    body += "It took " + (m_allPrintersRemovedTimestampMS - m_notifyTimestampMS) + " msec to complete " + m_peekNumPrinters + " notifications.";
+                    completion(true, m_allPrintersRemovedTimestampMS - m_notifyTimestampMS, m_peekNumPrinters);
                 } else {
-                    body += "  \nN/A - you must first use test service (this website) to simulate printer wait then send a job notification.";
+                    completion(false);
                 }
-                res.end(body);
             });
         }).end();
+}
+
+app.get("/stats", function(req, res) {
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
+    m_doStats(function(hasResult, elapsedTime, numPrinters){
+        var body = "Result: ";
+        if (hasResult) {
+            body += "It took " + elapsedTime + " msec to complete " + numPrinters + " notifications.";
+        } else {
+            body += "  \nN/A - you must first use test service (this website) to simulate printer wait then send a job notification.";
+        }
+        res.end(body);
+    });
+});
+
+app.get("/stats_elapsed", function(req, res) {
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
+    m_doStats(function(hasResult, elapsedTime, numPrinters){
+        res.end((m_allPrintersRemovedTimestampMS - m_notifyTimestampMS).toString());
+    });
 });
 
 app.get("/setserver/:server/:port", function(req, res) {

@@ -23,7 +23,7 @@ router.get("/wait/:numRequests", function(req, res) {
             ws.on("open", function() {
                 var key = g_getClientInfo(this._socket);
                 this._socket.on("close", function (hadError) {
-                    var printer = g_findPrinter(key, true);
+                    var printer = g_findOrDeletePrinter(key, true);
                     if (g_verbose && printer != null) {
                         console.log("[test_ws.js] printer {" + printer.Key  + "} removed (socket closed), numPrinters=" + g_getPrinterCount());
                     }
@@ -39,7 +39,7 @@ router.get("/wait/:numRequests", function(req, res) {
                 }
                 this.key = key;
             }).on("message", function(message) {
-                var printer = g_findPrinter(this.key, false);
+                var printer = g_findOrDeletePrinter(this.key, false);
                 if (printer != null) {
                     if (g_verbose) {
                         console.log("[test_ws.js] printer {" + printer.Key  + "} received \"" + message + "\"");
